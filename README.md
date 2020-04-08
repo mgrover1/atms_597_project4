@@ -20,4 +20,4 @@ The following datasets were used in this project:
 Hourly and Daily observations from KCMI that were used for both training and validation.
 Daily GFS 12 UTC initialization forecasts, three hourly GFS durface forecast parameters, three hourly upper air forecast parameters.
 
-A large portion of this project included data manipuliation. NAN values and missing data were removed from the observed data as well as the GFS model data. The hourly observed precipitation data was used to calculate daily precipitation data and negative precipitation data was removed. The individual datasets were then organized into pandas dataframes and merged into master dataframes.
+A large portion of this project included data manipuliation. NAN values and missing data were removed from the observed data as well as the GFS model data. The hourly observed precipitation data was used to calculate daily precipitation data and negative precipitation data was removed. The individual datasets were then organized into pandas dataframes, merged into master dataframes, and separated into training and test data.
