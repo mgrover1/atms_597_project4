@@ -128,12 +128,12 @@ sfc_data_transposed = sfc_data.T
 sfc_data_sorted = sfc_data_transposed.sort_values(by=0, axis=0)
 
 # Replace missing data with nan
-sfc_data_sorted.replace('-9999','nan')
+sfc_data_sorted.replace('-9999', np.nan)
 
 # Remove NA data
 sfc_data_final = sfc_data_sorted.dropna(axis=0)
 
-# Repalce column names
+# Replace column names
 sfc_data_final.columns = ['DATE', 'DWPC', 'HCLD', 'LCLD', 'MCLD', 'PRCP', 'PRES', 'TMPC', 'UWND', 'VWND', 'WSPD']
 
 # Set index column
@@ -153,5 +153,52 @@ sfc_data_final_test.to_csv('gfs_sfc_data_final_test.csv')
 daily_obs = pd.read_csv('KCMI_daily.csv', header=4, skipfooter=7, error_bad_lines=False, engine='python')
 hourly_obs = pd.read_csv('KCMI_hourly.csv')
 
-daily_obs
+# Drop precip column to be replaced later
+daily_obs_drop = daily_obs.drop('Total Precip (in)', axis=1)
 
+# Remove columns except precip, set index, and change index to datetime
+hourly_precip = hourly_obs.drop(['tmpc','dwpc','mslp','wdir','wspd','skct','pr6h','doy','woy'],axis=1) 
+hourly_precip.set_index('Timestamp')
+hourly_precip.index = pd.to_datetime(hourly_precip['Timestamp'])
+
+# Resample precip to daily data
+daily_precip = hourly_precip.resample('d').sum()
+daily_precip.columns = ['Daily Precip (mm)']
+
+# Set dates to match daily data date range and add the daily precip data to the daily dataframe
+daily_precip_red = daily_precip[(daily_precip.index>'2009-12-31') & (daily_precip.index<'2020-01-01')]
+daily_obs_drop['Daily Precip (mm)'] = daily_precip_red['Daily Precip (mm)'].values
+daily_obs_drop
+
+# Orgainze the daily data and convert to degrees C and m/s
+# Drop nan and missing data
+daily_obs_drop = daily_obs.drop('Unnamed: 5', axis=1)
+daily_obs_drop2 = daily_obs_drop.replace('M', np.nan)
+daily_obs_new_nan = daily_obs_drop2.dropna(axis=0)
+daily_obs_new = daily_obs_new_nan.set_index('Date')
+daily_obs_new['Max Hourly Temp (F)'] = (daily_obs_new['Max Hourly Temp (F)'].astype(float) - 32)*(5/9.)
+daily_obs_new['Min Hourly Temp (F)'] = (daily_obs_new['Min Hourly Temp (F)'].astype(float) - 32)*(5/9.)
+daily_obs_new['Max Wind Speed (mph)']  = (daily_obs_new['Max Wind Speed (mph)'].astype(float)) * 0.44704
+daily_obs_new.columns = ['Max Hourly Temp (C)', 'Min Hourly Temp (C)', 'Max Wind Speed (m/s)', 'Total Precip (mm)']
+
+# Organize hourly data, drop nan values, and change negative precip. to 0
+hourly_obs_new = hourly_obs.dropna(axis=0)
+hourly_obs_new2 = hourly_obs_new.set_index('Timestamp')
+hourly_obs_new3 = hourly_obs_new2.replace(-0.1, 0)
+
+# Organize the observed data into training and test
+hourly_obs_final_training = hourly_obs_new3.loc[:'2019-01-01']
+print(hourly_obs_final_training)
+hourly_obs_final_test = hourly_obs_new3.loc['2019-01-01':'2020-01-01']
+print(hourly_obs_final_test)
+
+daily_obs_final_training = daily_obs_new.loc[:'2018-12-31']
+print(daily_obs_final_training)
+daily_obs_final_test = daily_obs_new.loc['2019-01-01':'2020-01-01']
+print(daily_obs_final_test)
+
+# Save the observed data to csv files
+daily_obs_final_training.to_csv('daily_obs_training.csv')
+daily_obs_final_test.to_csv('daily_obs_test.csv')
+hourly_obs_final_training.to_csv('hourly_obs_training.csv')
+hourly_obs_final_test.to_csv('hourly_obs_test.csv')
